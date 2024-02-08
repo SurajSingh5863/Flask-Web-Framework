@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Stream</title>
+</head>
+<body>
+    <h1>Camera Stream</h1>
+    <video id="camera" autoplay></video>
+    <canvas id="canvas" width="640" height="480" style="display: none;"></canvas>
+    <img id="processed" src="" alt="Processed Frame" style="max-width: 100%;">
+    <script>
+        const video = document.getElementById('camera');
+        const canvas = document.getElementById('canvas');
+        const processedImage = document.getElementById('processed');
+        const context = canvas.getContext('2d');
+
+        async function startCamera() {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+        }
+
+        function captureFrame() {
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const frameData = canvas.toDataURL('image/jpeg'); // Convert canvas to base64 JPEG image
+            sendFrame(frameData);
+        }
+
+        function sendFrame(frameData) {
+            fetch('/process_frame', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ frame: frameData }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.processed_frame) {
+                    processedImage.src = 'data:image/jpeg;base64,' + data.processed_frame;
+                }
+            })
+            .catch(error => console.error('Error sending frame:', error));
+        }
+
+        startCamera();
+        setInterval(captureFrame, 1000/60); // Capture and send frame every 1 second
+    </script>
+</body>
+</html>
